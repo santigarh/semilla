@@ -1,0 +1,525 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);color:var(--color-text-primary);background:transparent;padding:1rem 0;font-size:14px;line-height:1.6}
+label{display:block;font-size:11px;color:var(--color-text-secondary);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+input,select,textarea{width:100%;padding:8px 10px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-secondary);color:var(--color-text-primary);font-family:inherit;font-size:13px;outline:none;transition:border .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--color-border-primary)}
+button{padding:8px 18px;border-radius:var(--border-radius-md);font-size:13px;font-family:inherit;font-weight:500;cursor:pointer;border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-primary);transition:all .15s}
+button:hover{background:var(--color-background-secondary)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.btn-primary{background:var(--color-background-info);color:var(--color-text-info);border-color:var(--color-border-info)}
+.btn-primary:hover{opacity:.9;background:var(--color-background-info)}
+.config-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-bottom:1rem}
+.full{grid-column:1/-1}
+.tag-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.tag{font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;border:0.5px solid var(--color-border-secondary);color:var(--color-text-secondary);background:transparent;transition:all .15s;user-select:none}
+.tag.sel{background:var(--color-background-info);color:var(--color-text-info);border-color:var(--color-border-info)}
+.sep{height:0.5px;background:var(--color-border-tertiary);margin:1rem 0}
+.result-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1.25rem;margin-top:1rem}
+.result-section{margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:0.5px solid var(--color-border-tertiary)}
+.result-section:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}
+.sec-badge{display:inline-flex;align-items:center;gap:6px;margin-bottom:8px}
+.sec-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sec-label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--color-text-secondary)}
+.sec-content{font-size:13px;line-height:1.75;color:var(--color-text-primary);white-space:pre-wrap}
+.streaming-cursor{display:inline-block;width:2px;height:14px;background:var(--color-text-info);animation:blink .8s steps(1) infinite;vertical-align:middle;margin-left:2px}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+.status-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--color-text-secondary);margin-top:8px;min-height:20px}
+.spinner{width:14px;height:14px;border:1.5px solid var(--color-border-secondary);border-top-color:var(--color-text-info);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.actions-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:1rem}
+.copied{font-size:12px;color:var(--color-text-success);margin-left:4px;display:none}
+.error-msg{background:var(--color-background-danger);color:var(--color-text-danger);border:0.5px solid var(--color-border-danger);border-radius:var(--border-radius-md);padding:10px 14px;font-size:13px;margin-top:10px;display:none}
+.secciones-check{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin-top:4px}
+.check-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-text-secondary);cursor:pointer}
+.check-item input[type=checkbox]{width:14px;height:14px;cursor:pointer;accent-color:var(--color-text-info)}
+</style>
+
+<div style="margin-bottom:1rem">
+  <p style="font-size:13px;color:var(--color-text-secondary)">Genera una guía de estudio bíblico completa a partir de cualquier pasaje usando Claude como motor.</p>
+</div>
+
+<div style="background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:1rem;margin-bottom:1rem;display:flex;align-items:center;gap:10px">
+  <div style="flex:1">
+    <label>Serie de estudio</label>
+    <select id="serie_id" style="width:100%">
+      <option value="">— Sin serie (guía suelta) —</option>
+    </select>
+  </div>
+  <div style="padding-top:16px">
+    <button onclick="abrirNuevaSerie()" style="white-space:nowrap">+ Nueva serie</button>
+  </div>
+</div>
+
+<!-- Modal nueva serie -->
+<div id="modal-serie" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:center;justify-content:center">
+  <div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-lg);padding:1.25rem;width:340px">
+    <p style="font-size:13px;font-weight:500;margin-bottom:10px">Nueva serie</p>
+    <label>Nombre</label>
+    <input id="nueva-serie-nombre" placeholder="ej. Evangelio de Juan 2025" style="margin-bottom:8px"/>
+    <label>Descripción (opcional)</label>
+    <input id="nueva-serie-desc" placeholder="ej. Grupos pequeños, libro completo"/>
+    <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+      <button onclick="cerrarModal()">Cancelar</button>
+      <button class="btn-primary" onclick="crearSerie()">Crear</button>
+    </div>
+  </div>
+</div>
+
+<div class="config-grid">
+  <div class="full">
+    <label>Pasaje bíblico</label>
+    <input id="pasaje" placeholder="ej. Juan 5:1-15" value="Juan 5:1-15"/>
+  </div>
+  <div>
+    <label>Audiencia</label>
+    <select id="audiencia">
+      <option>Grupo pequeño de adultos</option>
+      <option>Jóvenes universitarios</option>
+      <option>Matrimonios</option>
+      <option>Nuevos creyentes</option>
+      <option>Líderes de ministerio</option>
+      <option>Estudio personal</option>
+    </select>
+  </div>
+  <div>
+    <label>Profundidad</label>
+    <select id="profundidad">
+      <option value="basico">Básica — 45 min de estudio</option>
+      <option value="intermedio" selected>Intermedia — 60-90 min</option>
+      <option value="avanzado">Avanzada — 2 horas+</option>
+    </select>
+  </div>
+  <div>
+    <label>Enfoque teológico</label>
+    <select id="enfoque">
+      <option>Cristocéntrico (Cristo en todo el texto)</option>
+      <option>Narrativo (personajes y trama)</option>
+      <option>Doctrinal (verdades para creer)</option>
+      <option>Devocional (aplicación personal)</option>
+      <option>Misional (implicaciones para la iglesia)</option>
+    </select>
+  </div>
+  <div>
+    <label>Idioma de salida</label>
+    <select id="idioma">
+      <option value="es">Español</option>
+      <option value="en">English</option>
+    </select>
+  </div>
+  <div class="full">
+    <label>Secciones a generar</label>
+    <div class="secciones-check" id="secciones-check"></div>
+  </div>
+  <div class="full">
+    <label>Contexto adicional (opcional)</label>
+    <textarea id="contexto" rows="2" placeholder="ej. Este grupo lleva 3 sesiones en Juan, enfocamos la sanidad vs fe la semana pasada..."></textarea>
+  </div>
+</div>
+
+<div style="display:flex;gap:8px;align-items:center">
+  <button class="btn-primary" id="btn-gen" onclick="generarGuia()">Generar guía</button>
+  <button onclick="limpiarResultado()" id="btn-limpiar" style="display:none">Nueva guía</button>
+  <button onclick="toggleHistorial()" id="btn-historial" style="margin-left:auto">Ver historial</button>
+</div>
+
+<div id="historial-panel" style="display:none;margin-top:1rem">
+  <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+    <input id="filtro-pasaje" placeholder="Filtrar por pasaje..." style="flex:1;font-size:12px" oninput="cargarHistorial()"/>
+    <select id="filtro-serie" style="font-size:12px" onchange="cargarHistorial()">
+      <option value="">Todas las series</option>
+    </select>
+  </div>
+  <div id="historial-lista" style="display:flex;flex-direction:column;gap:6px;max-height:320px;overflow-y:auto"></div>
+</div>
+
+<div class="status-row" id="status-row"></div>
+<div class="error-msg" id="error-msg"></div>
+
+<div id="resultado"></div>
+
+<script>
+const SECCIONES_DEF = [
+  {id:'contexto_sec', label:'Contexto del pasaje',    color:'#378ADD'},
+  {id:'observacion',  label:'Observación del texto',  color:'#1D9E75'},
+  {id:'interpretacion',label:'Interpretación',        color:'#7F77DD'},
+  {id:'palabras_clave',label:'Palabras clave',         color:'#BA7517'},
+  {id:'cristo',       label:'Cristo en el texto',     color:'#D85A30'},
+  {id:'preguntas',    label:'Preguntas de discusión', color:'#D4537E'},
+  {id:'aplicacion',   label:'Aplicación práctica',    color:'#0F6E56'},
+  {id:'memoria',      label:'Versículo para memorizar',color:'#5F5E5A'},
+  {id:'oracion',      label:'Guía de oración',        color:'#993556'},
+];
+
+function renderCheckboxes(){
+  const c = document.getElementById('secciones-check');
+  c.innerHTML = SECCIONES_DEF.map(s=>`
+    <label class="check-item">
+      <input type="checkbox" id="chk_${s.id}" checked>
+      <span>${s.label}</span>
+    </label>
+  `).join('');
+}
+renderCheckboxes();
+
+function getSeccionesSeleccionadas(){
+  return SECCIONES_DEF.filter(s=>document.getElementById('chk_'+s.id)?.checked);
+}
+
+function buildPrompt(){
+  const pasaje    = document.getElementById('pasaje').value.trim();
+  const audiencia = document.getElementById('audiencia').value;
+  const profund   = document.getElementById('profundidad').value;
+  const enfoque   = document.getElementById('enfoque').value;
+  const idioma    = document.getElementById('idioma').value === 'es' ? 'español' : 'English';
+  const contexto  = document.getElementById('contexto').value.trim();
+  const secciones = getSeccionesSeleccionadas().map(s=>s.label).join(', ');
+
+  return `Eres un pastor y maestro bíblico experto en hermenéutica y educación cristiana. 
+Genera una guía de estudio bíblico completa y práctica en ${idioma}.
+
+PASAJE: ${pasaje}
+AUDIENCIA: ${audiencia}
+PROFUNDIDAD: ${profund}
+ENFOQUE TEOLÓGICO: ${enfoque}
+${contexto ? `CONTEXTO DEL GRUPO: ${contexto}` : ''}
+
+Genera las siguientes secciones en orden, usando exactamente estos encabezados (en mayúsculas y entre corchetes):
+
+${getSeccionesSeleccionadas().map((s,i)=>`[${s.label.toUpperCase()}]`).join('\n')}
+
+INSTRUCCIONES POR SECCIÓN:
+- [CONTEXTO DEL PASAJE]: Quién escribió, a quién, cuándo, qué sucedía en esa cultura. 2-3 párrafos.
+- [OBSERVACIÓN DEL TEXTO]: Lee el texto despacio. Haz 5-7 preguntas de observación (¿Qué ves? ¿Quién? ¿Cuándo? ¿Dónde? ¿Qué acciones?) respondidas brevemente desde el texto.
+- [INTERPRETACIÓN]: ¿Qué significa este pasaje? Tensión teológica, estructura, idea central en 1 oración.
+- [PALABRAS CLAVE]: 4-6 palabras o frases importantes del pasaje con su significado en contexto original.
+- [CRISTO EN EL TEXTO]: ¿Cómo apunta o revela a Jesucristo este pasaje? (cristología explícita o tipológica).
+- [PREGUNTAS DE DISCUSIÓN]: 6-8 preguntas abiertas, progresivas (observación → interpretación → aplicación). Apropiadas para ${audiencia}.
+- [APLICACIÓN PRÁCTICA]: 3-4 aplicaciones concretas y específicas. Cognitiva (creer), afectiva (sentir), volitiva (hacer esta semana).
+- [VERSÍCULO PARA MEMORIZAR]: 1-2 versículos del pasaje con una razón breve de por qué memorizarlos.
+- [GUÍA DE ORACIÓN]: Una oración guiada de 3-4 pasos basada en el pasaje, que el líder pueda usar al cierre.
+
+Usa lenguaje claro, cálido y accesible. Cada sección debe ser autocontenida y práctica para usar directamente en el grupo.`;
+}
+
+const API_BASE = 'http://localhost:3000/api';
+
+let resultData = {};
+
+// ── Inicialización ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => { cargarSeries(); });
+
+// ── Series ─────────────────────────────────────────────────────
+async function cargarSeries() {
+  try {
+    const res  = await fetch(API_BASE + '/series');
+    const data = await res.json();
+    ['serie_id','filtro-serie'].forEach(selId => {
+      const sel = document.getElementById(selId);
+      if (!sel) return;
+      const firstOpt = sel.options[0].outerHTML;
+      sel.innerHTML = firstOpt;
+      data.forEach(s => {
+        sel.innerHTML += '<option value="' + s.id + '">' + s.nombre + (selId==='serie_id' ? ' ('+s.total_estudios+')' : '') + '</option>';
+      });
+    });
+  } catch(e) { console.warn('No se pudo cargar series:', e.message); }
+}
+
+function abrirNuevaSerie() { document.getElementById('modal-serie').style.display = 'flex'; }
+function cerrarModal()     { document.getElementById('modal-serie').style.display = 'none'; }
+
+async function crearSerie() {
+  const nombre = document.getElementById('nueva-serie-nombre').value.trim();
+  const desc   = document.getElementById('nueva-serie-desc').value.trim();
+  if (!nombre) return;
+  try {
+    await fetch(API_BASE + '/series', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ nombre, descripcion: desc })
+    });
+    cerrarModal();
+    document.getElementById('nueva-serie-nombre').value = '';
+    document.getElementById('nueva-serie-desc').value   = '';
+    await cargarSeries();
+  } catch(e) { alert('Error al crear serie: ' + e.message); }
+}
+
+// ── Historial ──────────────────────────────────────────────────
+let historialVisible = false;
+
+async function toggleHistorial() {
+  historialVisible = !historialVisible;
+  document.getElementById('historial-panel').style.display = historialVisible ? 'block' : 'none';
+  document.getElementById('btn-historial').textContent = historialVisible ? 'Ocultar historial' : 'Ver historial';
+  if (historialVisible) await cargarHistorial();
+}
+
+async function cargarHistorial() {
+  const pasaje  = (document.getElementById('filtro-pasaje')?.value || '').trim();
+  const serieId = document.getElementById('filtro-serie')?.value || '';
+  const lista   = document.getElementById('historial-lista');
+  lista.innerHTML = '<span style="font-size:12px;color:var(--color-text-tertiary)">Cargando...</span>';
+  try {
+    const params = new URLSearchParams();
+    if (pasaje)  params.set('pasaje',   pasaje);
+    if (serieId) params.set('serie_id', serieId);
+    const res   = await fetch(API_BASE + '/estudios?' + params);
+    const items = await res.json();
+    if (!items.length) { lista.innerHTML = '<span style="font-size:12px;color:var(--color-text-tertiary)">Sin resultados.</span>'; return; }
+    lista.innerHTML = items.map(e =>
+      '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);cursor:pointer" onclick="cargarEstudio(' + e.id + ')">' +
+        '<div style="flex:1">' +
+          '<div style="font-size:13px;font-weight:500">' + e.pasaje + '</div>' +
+          '<div style="font-size:11px;color:var(--color-text-secondary)">' + (e.serie_nombre||'Sin serie') + ' · ' + (e.audiencia||'') + ' · ' + new Date(e.created_at).toLocaleDateString('es-EC') + '</div>' +
+        '</div>' +
+        '<span style="font-size:11px;color:var(--color-text-tertiary)">' + e.total_secciones + ' secciones</span>' +
+        '<button onclick="event.stopPropagation();eliminarEstudio(' + e.id + ',this)" style="font-size:11px;padding:4px 8px;color:var(--color-text-danger)">✕</button>' +
+      '</div>'
+    ).join('');
+  } catch(e) { lista.innerHTML = '<span style="font-size:12px;color:var(--color-text-danger)">Error: ' + e.message + '</span>'; }
+}
+
+async function cargarEstudio(id) {
+  try {
+    const res     = await fetch(API_BASE + '/estudios/' + id);
+    const estudio = await res.json();
+    document.getElementById('pasaje').value      = estudio.pasaje;
+    document.getElementById('audiencia').value   = estudio.audiencia   || '';
+    document.getElementById('profundidad').value = estudio.profundidad || '';
+    document.getElementById('idioma').value      = estudio.idioma      || 'es';
+    document.getElementById('contexto').value    = estudio.contexto    || '';
+    if (estudio.serie_id) document.getElementById('serie_id').value = estudio.serie_id;
+
+    limpiarResultado();
+    const secciones = estudio.secciones;
+    const secDefs   = SECCIONES_DEF.filter(s => secciones.some(x => x.tipo === s.id));
+    const resultDiv = document.getElementById('resultado');
+    resultDiv.innerHTML = '<div class="result-card" id="result-card">' +
+      secDefs.map(s => {
+        const sec = secciones.find(x => x.tipo === s.id);
+        return '<div class="result-section" id="sec_' + s.id + '">' +
+          '<div class="sec-badge">' +
+            '<div class="sec-dot" style="background:' + s.color + '"></div>' +
+            '<span class="sec-label">' + s.label + '</span>' +
+          '</div>' +
+          '<div class="sec-content" id="content_' + s.id + '">' + (sec?.contenido||'') + '</div>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+    secciones.forEach(s => { resultData[s.tipo] = s.contenido; });
+    mostrarAcciones(false);
+    toggleHistorial();
+  } catch(e) { mostrarError('Error al cargar estudio: ' + e.message); }
+}
+
+async function eliminarEstudio(id, btn) {
+  if (!confirm('¿Eliminar esta guía del historial?')) return;
+  try {
+    await fetch(API_BASE + '/estudios/' + id, { method: 'DELETE' });
+    btn.closest('[onclick]').remove();
+  } catch(e) { alert('Error al eliminar: ' + e.message); }
+}
+
+// ── Guardar guía generada ──────────────────────────────────────
+async function guardarGuia() {
+  const secciones = getSeccionesSeleccionadas().map(s => ({
+    tipo: s.id, etiqueta: s.label, contenido: resultData[s.id] || ''
+  }));
+  const body = {
+    serie_id:    document.getElementById('serie_id').value || null,
+    pasaje:      document.getElementById('pasaje').value.trim(),
+    audiencia:   document.getElementById('audiencia').value,
+    profundidad: document.getElementById('profundidad').value,
+    enfoque:     document.getElementById('enfoque').value,
+    idioma:      document.getElementById('idioma').value,
+    contexto:    document.getElementById('contexto').value.trim(),
+    config_json: JSON.stringify(secciones.map(s=>s.tipo)),
+    secciones
+  };
+  try {
+    const res  = await fetch(API_BASE + '/estudios', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Error al guardar');
+    const btnG = document.getElementById('btn-guardar');
+    if (btnG) { btnG.textContent = '✓ Guardada'; btnG.disabled = true; }
+    await cargarSeries();
+  } catch(e) { mostrarError('Error al guardar: ' + e.message); }
+}
+
+// ── Generación ─────────────────────────────────────────────────
+async function generarGuia(){
+  const pasaje = document.getElementById('pasaje').value.trim();
+  if(!pasaje){ mostrarError('Ingresa un pasaje bíblico.'); return; }
+  if(getSeccionesSeleccionadas().length === 0){ mostrarError('Selecciona al menos una sección.'); return; }
+
+  ocultarError();
+  document.getElementById('btn-gen').disabled = true;
+  document.getElementById('btn-limpiar').style.display = 'none';
+  resultData = {};
+
+  const secciones = getSeccionesSeleccionadas();
+  const resultDiv = document.getElementById('resultado');
+  resultDiv.innerHTML = '<div class="result-card" id="result-card">' +
+    secciones.map(s=>
+      '<div class="result-section" id="sec_' + s.id + '">' +
+        '<div class="sec-badge">' +
+          '<div class="sec-dot" style="background:' + s.color + '"></div>' +
+          '<span class="sec-label">' + s.label + '</span>' +
+        '</div>' +
+        '<div class="sec-content" id="content_' + s.id + '"></div>' +
+      '</div>'
+    ).join('') +
+  '</div>';
+
+  setStatus('Generando guía...', true);
+
+  // Payload para el backend
+  const payload = {
+    pasaje,
+    audiencia:   document.getElementById('audiencia').value,
+    profundidad: document.getElementById('profundidad').value,
+    enfoque:     document.getElementById('enfoque').value,
+    idioma:      document.getElementById('idioma').value,
+    contexto:    document.getElementById('contexto').value.trim(),
+    secciones:   secciones.map(s => ({ id: s.id, label: s.label }))
+  };
+
+  try {
+    const resp = await fetch(API_BASE + '/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if(!resp.ok){
+      const err = await resp.json().catch(()=>({error:resp.statusText}));
+      throw new Error(err.error || 'Error en la API');
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let textoCompleto = '';
+
+    function parsearYRenderizar(texto){
+      for(const s of secciones){
+        const patron = new RegExp('\[' + s.label.toUpperCase() + '\]([\s\S]*?)(?=\[|$)', 'i');
+        const match = texto.match(patron);
+        if(match){
+          const contenido = match[1].trim();
+          const el = document.getElementById('content_'+s.id);
+          if(el) el.textContent = contenido;
+          resultData[s.id] = contenido;
+        }
+      }
+    }
+
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      buffer += decoder.decode(value, {stream:true});
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+      for(const line of lines){
+        if(!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if(data === '[DONE]') continue;
+        try{
+          const ev = JSON.parse(data);
+          if(ev.type === 'content_block_delta' && ev.delta?.text){
+            textoCompleto += ev.delta.text;
+            parsearYRenderizar(textoCompleto);
+          }
+        }catch{}
+      }
+    }
+
+    parsearYRenderizar(textoCompleto);
+    setStatus('');
+    document.getElementById('btn-limpiar').style.display = 'inline-block';
+    mostrarAcciones(true);
+
+  } catch(e){
+    setStatus('');
+    mostrarError('Error: ' + e.message);
+  } finally {
+    document.getElementById('btn-gen').disabled = false;
+  }
+}
+
+function mostrarAcciones(mostrarGuardar = true){
+  const existing = document.getElementById('acciones-row');
+  if(existing) existing.remove();
+  const div = document.createElement('div');
+  div.id = 'acciones-row';
+  div.className = 'actions-row';
+  div.innerHTML =
+    (mostrarGuardar ? '<button class="btn-primary" id="btn-guardar" onclick="guardarGuia()">Guardar en historial</button>' : '') +
+    '<button onclick="copiarGuia()">Copiar texto completo</button>' +
+    '<button onclick="exportarMarkdown()">Exportar Markdown</button>' +
+    '<span class="copied" id="copied-ok">Copiado</span>';
+  document.getElementById('resultado').appendChild(div);
+}
+
+function copiarGuia(){
+  const secciones = getSeccionesSeleccionadas();
+  let txt = 'GUÍA DE ESTUDIO BÍBLICO — ' + document.getElementById('pasaje').value + '\n';
+  txt += 'Audiencia: ' + document.getElementById('audiencia').value + '\n\n';
+  secciones.forEach(s=>{
+    const c = document.getElementById('content_'+s.id)?.textContent||'';
+    if(c) txt += s.label.toUpperCase() + '\n' + '─'.repeat(40) + '\n' + c + '\n\n';
+  });
+  navigator.clipboard.writeText(txt).then(()=>{
+    const m = document.getElementById('copied-ok');
+    if(m){ m.style.display='inline'; setTimeout(()=>m.style.display='none',2000); }
+  });
+}
+
+function exportarMarkdown(){
+  const pasaje = document.getElementById('pasaje').value;
+  const secciones = getSeccionesSeleccionadas();
+  let md = '# Guía de estudio — ' + pasaje + '\n\n';
+  md += '> Audiencia: ' + document.getElementById('audiencia').value + ' | ';
+  md += 'Profundidad: ' + document.getElementById('profundidad').selectedOptions[0].text + '\n\n';
+  secciones.forEach(s=>{
+    const c = document.getElementById('content_'+s.id)?.textContent||'';
+    if(c) md += '## ' + s.label + '\n\n' + c + '\n\n---\n\n';
+  });
+  const blob = new Blob([md], {type:'text/markdown'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'estudio-' + pasaje.replace(/[^a-z0-9]/gi,'-').toLowerCase() + '.md';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function setStatus(msg, spinner=false){
+  const row = document.getElementById('status-row');
+  if(!msg){ row.innerHTML=''; return; }
+  row.innerHTML = spinner
+    ? '<div class="spinner"></div><span>' + msg + '</span>'
+    : '<span>' + msg + '</span>';
+}
+
+function mostrarError(msg){
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function ocultarError(){ document.getElementById('error-msg').style.display='none'; }
+
+function limpiarResultado(){
+  document.getElementById('resultado').innerHTML = '';
+  const ar = document.getElementById('acciones-row');
+  if(ar) ar.remove();
+  document.getElementById('btn-limpiar').style.display='none';
+  setStatus('');
+  ocultarError();
+  resultData = {};
+}
+</script>

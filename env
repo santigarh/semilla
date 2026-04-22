@@ -1,0 +1,15 @@
+# ── Anthropic ─────────────────────────────────────────────
+ANTHROPIC_API_KEY=sk-ant-...
+
+# ── SQL Server ────────────────────────────────────────────
+DB_SERVER=localhost          # o IP del servidor
+DB_PORT=1433
+DB_NAME=BibleStudy           # nombre de tu base de datos
+DB_USER=sa
+DB_PASSWORD=tu_password_aqui
+DB_ENCRYPT=false             # true si usas Azure SQL
+DB_TRUST_CERT=true           # true para SQL Server local sin cert
+
+# ── App ───────────────────────────────────────────────────
+PORT=3000
+CORS_ORIGIN=*                # en producción: http://localhost:8080 o tu dominio
