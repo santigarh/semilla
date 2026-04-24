@@ -1189,7 +1189,7 @@ Usa lenguaje claro, cálido y accesible. Cada sección debe ser autocontenida y 
           function parsearYRenderizar(texto) {
             for (const s of secciones) {
               const patron = new RegExp(
-                "\[" + s.label.toUpperCase() + "\]([\s\S]*?)(?=\[|$)",
+                "\\[" + s.label.toUpperCase() + "\\]([\\s\\S]*?)(?=\\[|$)",
                 "i",
               );
               const match = texto.match(patron);
